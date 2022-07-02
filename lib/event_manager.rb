@@ -1,6 +1,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5,"0")[0..4]
@@ -41,6 +42,10 @@ def save_thank_you_letter(id,form_letter)
   end
 end
 
+def get_peak_hour(hours_list)
+  hours_list.max_by { |hour| hours_list.count(hour) }
+end
+
 puts 'EventManager initialized.'
 
 contents = CSV.open(
@@ -52,14 +57,18 @@ contents = CSV.open(
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
+hours_list = []
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
   phone_number = validate_phone_number(row[:homephone])
+  hours_list <<  Time.strptime(row[:regdate], '%Y/%d/%m %H:%M').hour
   legislators = legislators_by_zipcode(zipcode)
 
   form_letter = erb_template.result(binding)
 
   save_thank_you_letter(id,form_letter)
 end
+
+get_peak_hour(hours_list)
